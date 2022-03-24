@@ -44,6 +44,7 @@ bt_send_queue = []
 # STM32 Communications
 serial_sock = None
 serial_send_queue = []
+serial_sock_send_buffer = None
 algo_navi_complete = False
 time_algo_navi_complete = 0
 algo_navi_adjust_state = 0
@@ -179,11 +180,6 @@ def bluetooth_receive_parse(data):
 
     except Exception as e:
       logging.error(f"Error while parsing state data {e}")
-  elif data[0:5:] == "START":
-    if serial_sock and car_ready:
-        testThr = Thread(target=startAlgorithm, args=())
-        testThr.daemon = True
-        testThr.start()
   elif data[0:4:] == "STOP":
     exitAlgorithm = True
   else:
@@ -291,6 +287,7 @@ def write_obstacles_stitch():
 def uart_send():
   global init
   global serial_sock
+  global serial_sock_send_buffer
   global read_target
   global algo_navi_complete
   global time_algo_navi_complete
@@ -319,11 +316,13 @@ def uart_send():
             time_algo_navi_complete = time.time()
             algo_navi_complete = True
             read_target = True
-          
+          elif data == "START":
+            serial_sock.write(serial_sock_send_buffer)
+            
           if data.startswith("MOVE,"):
             recalculateFacing(data.split(',')[1])
-          if data != "NAVICOMPLETE":
-            serial_sock.write(command_to_send)
+          if data != "NAVICOMPLETE" and data != "START":
+            serial_sock_send_buffer = command_to_send
             #pass
           serial_send_queue.pop(0)
           time.sleep(3)
