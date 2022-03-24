@@ -1571,8 +1571,11 @@ void move_forward_indoor_dist(int distance_mm)
 
 void move_forward_encoder(int distance_mm, int pwmL1, int pwmR1)
 {
+	wheels_adjust();
 	osDelay(10);
-	//LEFT WHEELS
+	pwmL = pwmL1;
+	pwmR = pwmR1;
+	//LEFT WHEEL
 	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
 
@@ -1580,8 +1583,8 @@ void move_forward_encoder(int distance_mm, int pwmL1, int pwmR1)
 	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
 	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
 
-	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL1);
-	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR1);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
 	osDelay(10);
 
 //	int targetdiff =  7.4436*distance_mm + 0.0087;
@@ -1602,7 +1605,11 @@ void move_forward_encoder(int distance_mm, int pwmL1, int pwmR1)
 	{
 		L2 = __HAL_TIM_GET_COUNTER(&htim2);
 
-
+		if(F_Distance < 15)
+		{
+			//motor_stop();
+			return;
+		}
 
 		if(L2 == 0)
 		{
@@ -1618,13 +1625,29 @@ void move_forward_encoder(int distance_mm, int pwmL1, int pwmR1)
 			encoderDiff = (65535 -L2) + L1;
 		}
 		osDelay(10);
+		//indoor_Encoder();
+		__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+		__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
 	}
 	osDelay(100);
 	wheels_adjust();
 }
 
 
-
+void move_straight(int pwmL, int pwmR)
+{
+	if(gyro[2] < -10)
+	{
+		pwmR = pwmR + 5;
+	}
+	if(gyro[2]>10)
+	{
+		pwmL = pwmL + 5;
+	}
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+	osDelay(10);
+}
 /*-----------------------------------Assessment Requirement----------------------------------------*/
 
 /*-----------------------------------Code for 3 point Turn ----------------------------------------*/
@@ -1660,7 +1683,7 @@ void outdoor_three_point_turnR()
 	osDelay(200);
 	move_outdoor_forward_right(55,180);
 	osDelay(200);
-	move_outdoor_backward_left(45, 135);
+	move_outdoor_backward_left(45, 170);
 	osDelay(200);
 }
 
@@ -1672,618 +1695,649 @@ void outdoor_three_point_turnL()
 	osDelay(200);
 	move_outdoor_forward_left(40, 100);
 	osDelay(200);
-	move_outdoor_backward_right(80,158);
+	move_outdoor_backward_right(80,195);
 	osDelay(200);
 }
 
+void filming()
+{
+	move_forward_encoder(150, 1500, 1500);
+	move_backward(1500, 1500);
+	move_indoor_forward_right(80, 180);
+	move_indoor_forward_left(30, 150);
+	wheels_adjust();
+	motor_stop();
+	osDelay(10);
+}
+void move_indoor_forward_right(uint8_t angle, int distance_mm)
+{
+	pwmL = 2000;
+	pwmR = 1500;
+	direction = 1;
+	wheels_straight();
+	osDelay(200);
+	wheels_right(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
 
-//void move_indoor_forward_right(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 2000;
-//	pwmR = 1500;
-//	direction = 1;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_right(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//	uint8_t en_msg[10];
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//
-//
-//}
-//
-//void move_indoor_backward_left(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 1500;
-//	pwmR = 2000;
-//	direction = 0;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_left(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//}
-//
-//
-//void move_indoor_forward_left(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 1500;
-//	pwmR = 2000;
-//	direction = 1;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_left(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//}
-//
-//void move_indoor_backward_right(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 2000;
-//	pwmR = 1500;
-//	direction = 0;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_right(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//	uint8_t en_msg[10];
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//
-//}
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+	uint8_t en_msg[10];
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	//motor_stop();
+	osDelay(1);
+
+
+}
+void move_backward(int pwmL, int pwmR)
+{
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+
+				//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+	int t_start = HAL_GetTick();
+	while(HAL_GetTick()- t_start < 700)
+	{
+		osDelay(1);
+	}
+
+	motor_stop();
+	return;
+}
+
+void move_indoor_backward_left(uint8_t angle, int distance_mm)
+{
+	pwmL = 1500;
+	pwmR = 2000;
+	direction = 0;
+	wheels_straight();
+	osDelay(200);
+	wheels_left(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	motor_stop();
+	osDelay(1);
+}
+
+
+void move_indoor_forward_left(uint8_t angle, int distance_mm)
+{
+	pwmL = 1500;
+	pwmR = 2000;
+	direction = 1;
+	wheels_straight();
+	osDelay(200);
+	wheels_left(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	motor_stop();
+	osDelay(1);
+}
+
+void move_indoor_backward_right(uint8_t angle, int distance_mm)
+{
+	pwmL = 2000;
+	pwmR = 1500;
+	direction = 0;
+	wheels_straight();
+	osDelay(200);
+	wheels_right(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+	uint8_t en_msg[10];
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	motor_stop();
+	osDelay(1);
+
+}
 //
 ///***************************************************************************************OUTDOOR-----------------------*/
-//void move_outdoor_forward_left(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 1500;
-//	pwmR = 2000;
-//	direction = 1;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_left(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//}
-//
-//void move_outdoor_backward_right(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 2000;
-//	pwmR = 1500;
-//	direction = 0;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_right(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//	uint8_t en_msg[10];
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//
-//}
-//void move_outdoor_forward_right(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 2000;
-//	pwmR = 1500;
-//	direction = 1;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_right(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//	uint8_t en_msg[10];
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//
-//
-//}
-//
-//void move_outdoor_backward_left(uint8_t angle, int distance_mm)
-//{
-//	pwmL = 1500;
-//	pwmR = 2000;
-//	direction = 0;
-//	wheels_straight();
-//	osDelay(200);
-//	wheels_left(angle);
-//	osDelay(500);
-//	//LEFT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
-//
-//			//RIGHT WHEELS
-//	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
-//	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
-//
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
-//	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
-//
-//
-//
-//	int targetdiff =  7.4436*distance_mm + 0.0087;
-//	int encoderDiff = 0;
-//
-//	int L2 = 0;
-//
-//	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
-//	if(L1 == 0 && direction == 1)
-//	{
-//		L1 = 65535;
-//	}
-//
-//
-//    while(encoderDiff < (targetdiff -300))
-//	{
-//    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
-//		if(direction == 1)
-//		{
-//			if(L2 == 0)
-//			{
-//				L2 = 65535;
-//			}
-//
-//			if(L1 >= L2)
-//			{
-//				encoderDiff = L1-L2;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 -L2) + L1;
-//			}
-//		}
-//
-//		else
-//		{
-//			if(L2 == 65535)
-//			{
-//				L2 =0;
-//			}
-//			if(L2 >= L1)
-//			{
-//				encoderDiff = L2 - L1;
-//			}
-//			else
-//			{
-//				encoderDiff = (65535 - L1 ) + L2;
-//			}
-//
-//		}
-//		osDelay(10);
-//	}
-//	motor_stop();
-//	osDelay(1);
-//}
+void move_outdoor_forward_left(uint8_t angle, int distance_mm)
+{
+	pwmL = 1500;
+	pwmR = 2000;
+	direction = 1;
+	wheels_straight();
+	osDelay(200);
+	wheels_left(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	motor_stop();
+	osDelay(1);
+}
+
+void move_outdoor_backward_right(uint8_t angle, int distance_mm)
+{
+	pwmL = 2000;
+	pwmR = 1500;
+	direction = 0;
+	wheels_straight();
+	osDelay(200);
+	wheels_right(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+	uint8_t en_msg[10];
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	motor_stop();
+	osDelay(1);
+
+}
+void move_outdoor_forward_right(uint8_t angle, int distance_mm)
+{
+	pwmL = 2000;
+	pwmR = 1500;
+	direction = 1;
+	wheels_straight();
+	osDelay(200);
+	wheels_right(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_SET);
+
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_SET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+	uint8_t en_msg[10];
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	motor_stop();
+	osDelay(1);
+
+
+}
+
+void move_outdoor_backward_left(uint8_t angle, int distance_mm)
+{
+	pwmL = 1500;
+	pwmR = 2000;
+	direction = 0;
+	wheels_straight();
+	osDelay(200);
+	wheels_left(angle);
+	osDelay(500);
+	//LEFT WHEELS
+	HAL_GPIO_WritePin(GPIOA, AIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, AIN1_Pin, GPIO_PIN_RESET);
+
+			//RIGHT WHEELS
+	HAL_GPIO_WritePin(GPIOA, BIN2_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOA, BIN1_Pin, GPIO_PIN_RESET);
+
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_1, pwmL);
+	__HAL_TIM_SetCompare(&htim8, TIM_CHANNEL_2, pwmR);
+
+
+
+	int targetdiff =  7.4436*distance_mm + 0.0087;
+	int encoderDiff = 0;
+
+	int L2 = 0;
+
+	int L1 = __HAL_TIM_GET_COUNTER(&htim2);
+	if(L1 == 0 && direction == 1)
+	{
+		L1 = 65535;
+	}
+
+
+    while(encoderDiff < (targetdiff -300))
+	{
+    	L2 = __HAL_TIM_GET_COUNTER(&htim2);
+		if(direction == 1)
+		{
+			if(L2 == 0)
+			{
+				L2 = 65535;
+			}
+
+			if(L1 >= L2)
+			{
+				encoderDiff = L1-L2;
+			}
+			else
+			{
+				encoderDiff = (65535 -L2) + L1;
+			}
+		}
+
+		else
+		{
+			if(L2 == 65535)
+			{
+				L2 =0;
+			}
+			if(L2 >= L1)
+			{
+				encoderDiff = L2 - L1;
+			}
+			else
+			{
+				encoderDiff = (65535 - L1 ) + L2;
+			}
+
+		}
+		osDelay(10);
+	}
+	motor_stop();
+	osDelay(1);
+}
 /*-------------------------------------------------------------------------------------------------*/
 
-void indoor_fakePID()
+void indoor_Encoder()
 {
 	int expected;
 	expected = (Ldiff + Rdiff)/2;
@@ -2295,7 +2349,7 @@ void indoor_fakePID()
 	}
 	else if(Ldiff < expected)
 	{
-		pwmL = pwmL + 15;
+		pwmL = pwmL + 20;
 	}
 
 	if(Rdiff > expected)
@@ -2323,7 +2377,7 @@ void indoor_fakePID()
 //	}
 }
 
-void outdoor_fakePID()
+void outdoor_Encoder()
 {
 
 	int expected;
@@ -2854,16 +2908,18 @@ void Motor_Task(void *argument)
 					wheels_straight();
 					break;
 
-				case 'G':
-					if(motor_case!='G'){break;}
-					move_forward_encoder(2800,3000,3000);
+				case 1:
+					osDelay(5000);
+					if(motor_case!=1){break;}
+					//move_forward_encoder(200,1500,1500);
+					filming();
 					motor_case = 0;
 					break;
 
 			/*------------------------Calculate Distance-------------------------------------------------------------------------------------------*/
-				case 'F': //INDOOR TASK2
+				case 'G': //INDOOR TASK2
 					osDelay(100);
-					if(motor_case != 'F'){break;}
+					if(motor_case != 'G'){break;}
 					//task2_index = 19;
 					if(task2_index == 8)indoor_task2_80cm();
 					else if(task2_index == 9)indoor_task2_90cm();
@@ -2879,6 +2935,27 @@ void Motor_Task(void *argument)
 					else if(task2_index == 19)indoor_task2_190cm();
 					else if(task2_index == 20)indoor_task2_200cm();
 					motor_case =0;
+					break;
+				case 2:
+					osDelay(5000);
+					if(motor_case != 2){break;}
+					outdoor_three_point_turnL();
+					motor_case = 0;
+					osDelay(10);
+					break;
+
+				case 3:
+					osDelay(5000);
+					if(motor_case != 3){break;}
+					outdoor_three_point_turnR();
+					motor_case = 0;
+					break;
+
+				case 4:
+					osDelay(1000);
+					if(motor_case != 4){break;}
+					move_backward(1500, 1500);
+					motor_case = 0;
 					break;
 
 			/*------------------------ASSESSMENT FOR TASK_2---------------------------------------------------*/
@@ -2922,7 +2999,7 @@ void Motor_Task(void *argument)
 					break;
 		  }
 	  }
-	osDelay(10);
+	osDelay(100);
 	//flag = '1';
 
   }
@@ -2967,7 +3044,7 @@ void ICM_20948_Task(void *argument)
 	//gyro[2] = round(gyro[2] + ((gyro_offset*131)/13.1));
 	//gyro_sum += gyro[2];
 	osDelay(10);
-	sprintf(icmTempMsg,"%+05d",gyro_sum);
+	sprintf(icmTempMsg,"%+05d",gyro[2]);
 	OLED_ShowString(10, 30, icmTempMsg);
 	nextWakeTime += xFrequency;
 	osDelayUntil(nextWakeTime);
