@@ -11,7 +11,8 @@ def_start_pos = [2,2,NORTH]
 
 # 10th march test run obst
 # test_obstacles = [[2,15,'S'], [6, 13,'E'], [10,17,'S'], [15,7,'W'], [18,18,'S'], [8,2,'N'], [13,9,'N'], [18,6,'N']]
-test_obstacles = [[2,17,'S'], [7,11,'W'], [14,15,'W'], [19,17,'S'], [12,5,'W'], [19,4,'N']]
+# test_obstacles = [[7,11,'W'],[12,5,'W'], [14,15,'S'], [19,17,'S'],[19,4,'N'],[2,17,'S'],[5,7,'S'],[10,15,'S']]
+test_obstacles = [[2,19,'S'],[7,13,'N'],[14,3,'N'],[20,10,'W'],[15,18,'S'],[11,8,'W']]
 class Main:
 
     def __init__(self, start_pos = def_start_pos, obstacles = test_obstacles, dist_from_obst = float("inf"), angle_of_obst = float("inf")):
