@@ -87,6 +87,14 @@ class Maze:
         for i in range(len(wayp)):
             for j in range(i, len(wayp)):
                 dist[i][j] = abs(wayp[i][0]-wayp[j][0]) + abs(wayp[i][1]-wayp[j][1])
+                xmin, xmax = min(wayp[i][0], wayp[j][0]), max(wayp[i][0], wayp[j][0])
+                ymin, ymax = min(wayp[i][1], wayp[j][1]), max(wayp[i][1], wayp[j][1])
+
+                for x,y in zip(range(xmin, xmax+1), range(ymin, ymax+1)):
+                    if not self.robotPosIsValid([x,y,NORTH]):
+                        dist[i][j] += 100
+                        break
+
                 # waypoint out of range, assign large dist value so gets appended to last of visit order
                 if dist[i][j] == float("inf") or dist[i][j] == NaN:
                     dist[i][j] = 1000

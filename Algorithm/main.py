@@ -7,10 +7,14 @@ import math
 
 # Below values defined according to android coord system i.e. (1,1) at bottom left of grid
 def_start_pos = [2,2,NORTH]
-# 9th march test run obst: [[8,13,'W'], [11,17,'S'],[15,15,'S'], [17,6,'W'],[2,19,'S'],[11,5,'N']]
 
-# 10th march test run obst
-test_obstacles = [[7,11,'W'],[12,5,'W'], [14,15,'S'], [19,17,'S'],[19,4,'N'],[2,17,'S'],[5,7,'S'],[11,14,'S']]
+
+# test run obstacles
+# test_obstacles = [[8,13,'W'], [11,17,'S'],[15,15,'S'], [17,6,'W'],[2,19,'S'],[11,5,'N']]
+# test_obstacles = [[2,15,'S'], [6, 13,'E'], [10,17,'S'], [15,7,'W'], [18,18,'S'], [8,2,'N'], [13,9,'N'], [18,6,'N']]
+# test_obstacles = [[7,11,'W'],[12,5,'W'], [14,15,'S'], [19,17,'S'],[19,4,'N'],[2,17,'S'],[5,7,'S'],[10,15,'S']]
+test_obstacles = [[2,19,'S'],[7,13,'N'],[14,3,'N'],[20,10,'W'],[15,18,'S'],[11,8,'W']]
+
 
 class Main:
 
@@ -134,3 +138,15 @@ class Main:
 
         return path
 
+
+# Driver code for testing
+if __name__ == "__main__":
+    m = Main()
+    print("Obstacles: ", end = ' ')
+    print(Main.processAlgoCoords(m.obstacles))
+    print("Waypoints: ", end = ' ')
+    print(Main.processAlgoCoords(m.waypoints))
+    path = m.getPath()
+    while path is not None:
+        path = m.getPath()
+    

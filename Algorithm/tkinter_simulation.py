@@ -10,7 +10,7 @@ from tsp import FastestPath
 from shortest_path import ShortestPath
 from maze import Maze
 from utils import *
-from temp_shortest_path import *
+# from temp_shortest_path import *
 
 
 window = Tk()
@@ -207,7 +207,8 @@ def shortest_path():
     # path = fp.get_order_of_visit(waypoints_dist, len(obstacle_list)+1)
     # #command_list = []
     # print(path)
-    path = TempShortestPath.main(obstacle_list)
+    # path = TempShortestPath.main(obstacle_list)
+    path = []
     print(path)
     
 

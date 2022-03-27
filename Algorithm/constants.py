@@ -22,9 +22,6 @@ car_height = 30
 
 turning_dist = 30
 
-
-
-
 # obstacles
 num_obstacles = 5
 
