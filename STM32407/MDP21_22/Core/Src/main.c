@@ -2954,7 +2954,7 @@ void Motor_Task(void *argument)
 				case 4:
 					osDelay(1000);
 					if(motor_case != 4){break;}
-					move_backward(1500, 1500);
+					move_forward_encoder(1000, 1.03*1500, 1500);
 					motor_case = 0;
 					break;
 
