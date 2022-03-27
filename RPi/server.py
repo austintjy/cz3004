@@ -44,6 +44,7 @@ bt_send_queue = []
 # STM32 Communications
 serial_sock = None
 serial_send_queue = []
+serial_sock_send_buffer = None
 algo_navi_complete = False
 time_algo_navi_complete = 0
 algo_navi_adjust_state = 0
@@ -103,6 +104,7 @@ def bluetooth_send():
           logging.debug(data)
 
         bt_send_queue.pop(0)
+    time.sleep(0.2)
 
 def bluetooth_configure():
   logging.debug(f"Configuring bluetooth env")
@@ -134,30 +136,30 @@ def bluetooth_runtime():
   global client_info
 
   bluetooth_configure()
-  try:
-    logging.info(f"Waiting for connection on RFCOMM channel {bt_server_sock.getsockname()[1]}")
-    bt_client_sock, client_info = bt_server_sock.accept()
-    logging.info(f"Accepted connection from {client_info}")
+  logging.info(f"Waiting for connection on RFCOMM channel {bt_server_sock.getsockname()[1]}")
+  while True:
     try:
-      while True:
-        data = bt_client_sock.recv(bt_buffer_size)
-        if len(str(data.decode())) == 0:
-          break
-        bluetooth_receive_parse(data.decode())
-        #bt_send_queue.append(f"Pi received: {data.decode()}")
-        time.sleep(0.1)
-    except IOError as e:
-      logging.error(e)
-      pass
-    bt_client_sock.close()
-    bt_server_sock.close()
-  except Exception as e:
-    logging.error(e)
-  finally:
-    if bt_client_sock:
+      bt_client_sock, client_info = bt_server_sock.accept()
+      logging.info(f"Accepted connection from {client_info}")
+      try:
+        while True:
+          data = bt_client_sock.recv(bt_buffer_size)
+          if not data or len(str(data.decode())) == 0:
+            break
+          bluetooth_receive_parse(data.decode())
+          #bt_send_queue.append(f"Pi received: {data.decode()}")
+          time.sleep(0.2)
+      except IOError as e:
+        logging.error(e)
       bt_client_sock.close()
-    if bt_server_sock:
-      bt_server_sock.close()
+    except Exception as e:
+      logging.error(e)
+    finally:
+      if bt_client_sock:
+        bt_client_sock.close()
+    time.sleep(1)
+  if bt_server_sock:
+    bt_server_sock.close()
 
 def bluetooth_receive_parse(data):
   global exitAlgorithm
@@ -178,11 +180,6 @@ def bluetooth_receive_parse(data):
 
     except Exception as e:
       logging.error(f"Error while parsing state data {e}")
-  elif data[0:5:] == "START":
-    if serial_sock and car_ready:
-        testThr = Thread(target=startAlgorithm, args=())
-        testThr.daemon = True
-        testThr.start()
   elif data[0:4:] == "STOP":
     exitAlgorithm = True
   else:
@@ -232,12 +229,12 @@ def startAlgorithm():
         bt_send_queue.append(f"SEEN,{target_obstacle[0]} {target_obstacle[1]} {detected_image}")
         path = algo.getPath(float(detected_distance), float(detected_angle))
         target_obstacle = algo.getTarget()
-        time.sleep(0.1)
+        time.sleep(0.2)
         detected_angle = None
         detected_distance = None
         iterObstacle = iterObstacle+1
       else:
-        if algo_navi_complete and time.time() - time_algo_navi_complete > 2.5:
+        if algo_navi_complete and time.time() - time_algo_navi_complete > 5:
           if algo_navi_adjust_state == 0:
             algo_navi_complete = False
             serial_send_queue.append("MOVE,f")
@@ -246,9 +243,16 @@ def startAlgorithm():
           elif algo_navi_adjust_state == 1:
             algo_navi_complete = False
             serial_send_queue.append("MOVE,b")
+            serial_send_queue.append("NAVICOMPLETE")
+            algo_navi_adjust_state = 2
+          elif algo_navi_adjust_state == 2:
+            algo_navi_complete = False
             serial_send_queue.append("MOVE,b")
             serial_send_queue.append("NAVICOMPLETE")
-            algo_navi_adjust_state = 0
+            algo_navi_adjust_state = 3
+          elif algo_navi_adjust_state == 3:
+            break
+
         logging.debug("Algorithm waiting for navigation to complete")
         if not detected_distance:
           logging.debug(f"Algorithm is waiting for distance and angle detection")
@@ -272,10 +276,10 @@ def startAlgorithm():
 def write_obstacles_stitch():
   logging.debug("Completed. Do send stitch")
   output = ""
-  for i in obstacles:
-    output = output + ","
+  for i in detected_obstacles:
+    output = output + i + ","
   
-  output = output[0:-2:]
+  output = output[0:-1:]
   with open(stitchPath, 'w+') as file:
     file.write(output)
 
@@ -283,6 +287,7 @@ def write_obstacles_stitch():
 def uart_send():
   global init
   global serial_sock
+  global serial_sock_send_buffer
   global read_target
   global algo_navi_complete
   global time_algo_navi_complete
@@ -291,7 +296,7 @@ def uart_send():
     try:
       if len(serial_send_queue) > 0:
         data = serial_send_queue[0]
-        if serial_sock and car_ready:
+        if serial_sock:
           if not serial_sock.isOpen():
             serial_sock = serial.Serial("/dev/ttyUSB0", 115200)
           logging.debug(f"[UART SEND] {data}")
@@ -311,11 +316,13 @@ def uart_send():
             time_algo_navi_complete = time.time()
             algo_navi_complete = True
             read_target = True
-          
+          elif data == "START":
+            serial_sock.write(serial_sock_send_buffer)
+            
           if data.startswith("MOVE,"):
             recalculateFacing(data.split(',')[1])
-          if data != "NAVICOMPLETE":
-            serial_sock.write(command_to_send)
+          if data != "NAVICOMPLETE" and data != "START":
+            serial_sock_send_buffer = command_to_send
             #pass
           serial_send_queue.pop(0)
           time.sleep(3)
@@ -323,7 +330,7 @@ def uart_send():
           serial_sock = serial.Serial("/dev/ttyUSB0", 115200)
     except IOError as e:
       logging.error(e)
-    time.sleep(0.1)
+    time.sleep(0.2)
 
 def recalculateFacing(movedDirection):
   global facing
@@ -357,7 +364,7 @@ def uart_runtime():
 #        data = serial_sock.read(serial_sock.inWaiting())
         data = serial_sock.read(serial_sock.inWaiting())
         uart_received_data(data)
-        time.sleep(0.1)
+        time.sleep(0.2)
     except serial.SerialException as e:
       logging.error("SerialException")
       logging.error(e)
@@ -366,7 +373,7 @@ def uart_runtime():
     finally:
       if serial_sock:
         serial_sock.close()
-    time.sleep(0.1)
+    time.sleep(0.2)
 
 def uart_received_data(data):
   global car_ready
@@ -409,7 +416,7 @@ def main():
 
   try:
     while True:
-      time.sleep(0.1)
+      time.sleep(1)
   except KeyboardInterrupt:
     logging.info("KeyboardInterrupt received, exiting.")
     pass
